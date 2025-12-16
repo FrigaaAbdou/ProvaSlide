@@ -30,7 +30,7 @@ Build **ProvaSlide**, a next-generation **presentation editor** that feels like 
 
 The output should be:
 - **Beautiful and consistent** (layout engine + templates)
-- **Auditable and trustworthy** (citations per bullet)
+- **Auditable and trustworthy** (evidence-backed bullets, optional source references)
 - **Editable like code** (structured deck JSON)
 - **Interactive** (Reveal.js components like quizzes, hotspots, drag & drop, etc.)
 
@@ -53,7 +53,7 @@ Even when users know the topic, they spend most of the time:
 - and checking that the content fits the intended audience.
 
 ### 2.2 Why existing tools fail the “real” needs
-Most tools optimize for **drawing**, not for **thinking** or **compiling knowledge**.
+Most tools optimize for **drawing**, not for **thinking** or for **compiling knowledge** into a structured artifact.
 
 #### Traditional tools (PowerPoint/Slides)
 - Slides are “pixels and shapes,” not semantic blocks
@@ -66,7 +66,7 @@ Most tools optimize for **drawing**, not for **thinking** or **compiling knowled
 - Great templates, but weak structure semantics
 - Technical/academic content is harder to maintain
 - Not built for traceability to sources
-- Hard to enforce strict scope constraints
+- Hard to enforce “use only what I provided” constraints
 
 #### Code-first tools (Reveal/MDX/Beamer)
 - Output quality is excellent
@@ -112,7 +112,7 @@ There is no “real” presentation builder that is:
 The guiding concept:
 
 > **Presentations are compiled** from sources into a structured deck (JSON IR),  
-> then rendered through Reveal.js, edited visually, and verified by citations.
+> then rendered through Reveal.js, edited visually, and verified through evidence links.
 
 ---
 
@@ -121,7 +121,7 @@ The guiding concept:
 ### 4.1 Primary persona: Teacher (time-constrained, accuracy-critical)
 - Uploads book chapter + an article
 - Sets: student grade level, duration, slide count, tone, language
-- AI generates: outline + deck with citations
+- AI generates: outline + deck with evidence references
 - Teacher reviews and adjusts
 - Exports to PDF or presents directly
 
@@ -134,33 +134,36 @@ The guiding concept:
 
 ## 5. Product Principles (Non-Negotiables)
 
-### 5.1 Source-only generation (No outside knowledge)
-AI must not add facts beyond provided resources.
+### 5.1 Source-grounded by default (No outside knowledge)
+ProvaSlide’s AI must **never add facts, claims, or details that are not supported by the user’s provided resources** (book, PDF, article, notes).
 
-This must be enforced architecturally, not just by prompting:
-- Every bullet/claim must carry **citations**
-- If citations are missing → AI must either ask the user or mark “not found in sources”
-- “Strict mode” can block export if anything is uncited
+This is not a “mode.” It’s the default behavior of the system:
+- The AI only writes content it can **justify from the uploaded resources**.
+- If the resources don’t clearly support something, the AI must **ask the user** instead of guessing.
+- The AI can restructure, simplify, summarize, and adapt to level — but it cannot introduce new information that isn’t present in the sources.
 
-### 5.2 Auditable output
-Trust layer:
-- Hover any bullet → exact snippet + source location (page/paragraph)
-- Coverage meter: % of content backed by sources
-- Export report: citations + source usage summary
+### 5.2 Auditable output (Evidence-backed writing)
+To make “source-grounded by default” reliable, ProvaSlide maintains internal evidence for the generated content:
+- Each bullet/claim is backed by **evidence links** to the resources (page/section/snippet).
+- The UI can optionally show “Source references” (hover or expandable) so the user can verify quickly.
+- If a bullet cannot be backed by the resources, the AI does not write it; it asks a clarification question.
+
+> Note: The goal is not to expose heavy “modes,” but to ensure the AI is *always precise* and *always constrained to the provided sources*.
 
 ### 5.3 Plan-first workflow
-AI does not jump directly to slides:
-- proposes **lesson plan** first (outline + slide count + objectives)
-- user approves/adjusts
-- then slides are generated
+The AI does not jump directly to slides:
+- It proposes a **lesson plan** first (outline + slide count + objectives).
+- The user approves/adjusts the plan.
+- Then ProvaSlide generates slides.
 
 ### 5.4 Ask when uncertain (never guess)
 If information is missing, ambiguous, conflicting, or too dense for constraints:
-- AI must stop and ask targeted questions with quick options
+- The AI must stop and ask targeted questions with quick options (buttons).
+- The AI should show what it found in the sources and why it cannot be sure.
 
 ### 5.5 Editor/Presenter separation
 Reveal runtime must not break editor UX:
-- embedded “diapo mode” should be isolated and stable
+- Embedded “diapo mode” should be isolated and stable.
 
 ---
 
@@ -182,7 +185,7 @@ Slides are composed of semantic blocks/components, not raw shapes.
 Examples:
 - Title
 - Bullet list
-- Quote (with citation)
+- Quote (with evidence reference)
 - Image (with caption)
 - Code block
 - Diagram placeholder
@@ -215,7 +218,7 @@ A structured schema is the foundation for:
 - Reveal rendering
 - AI generation/editing
 - exports
-- citations & verification
+- evidence references & verification
 
 ### 6.3.1 Conceptual schema
 - **Deck**
@@ -230,17 +233,17 @@ A structured schema is the foundation for:
   - `type`: text / image / code / quiz / hotspots…
   - `props`: content + settings
   - `layoutHints`: position/size or grid slots
-  - `citations[]` (when factual)
+  - `evidence[]` (when factual)
 
-### 6.3.2 Citations
-Each bullet/claim should include:
+### 6.3.2 Evidence references
+Each bullet/claim should include internal evidence:
 - `sourceId`
 - `location` (page number, paragraph id, section)
 - `snippet` excerpt (evidence)
 
 This enables:
 - hover-to-verify
-- strict-mode enforcement
+- “use only what I provided” enforcement by design
 - scope filtering (“only chapter 3”)
 
 ---
@@ -261,7 +264,7 @@ AI acts like a **presentation compiler**:
 - chunk by page/paragraph/section
 - build retrieval index
 - extract metadata (title, headings)
-- store anchors for citation (page/offset)
+- store anchors for evidence (page/offset)
 
 ### Stage B — Subject Understanding (From Sources Only)
 - identify key concepts, definitions, relationships
@@ -278,7 +281,6 @@ Inputs:
 - duration (e.g., 45 min)
 - slide count target (e.g., 10–15)
 - tone + language
-- strictness (strict citations mode)
 - source scope (optional: chapter/pages)
 
 Outputs (for user approval):
@@ -291,7 +293,7 @@ Outputs (for user approval):
 For each planned slide:
 - retrieve relevant chunks
 - generate blocks (title + bullets + examples)
-- attach citations to each bullet
+- attach evidence to each bullet (source location + snippet)
 - enforce density rules (word count + reading level)
 
 ### Stage E — Layout Selection + Layout Engine
@@ -302,15 +304,16 @@ LLM should not place pixels.
   - margins and spacing rhythm
   - overflow rules (split slide or condense)
 
-### Stage F — Verification / Guardrails
+### Stage F — Verification / Guardrails (Precision pass)
 Before presenting output:
-- citation coverage validator (no missing citations in strict mode)
-- scope validator (citations only from selected sources/pages)
-- level validator (reading level, jargon thresholds)
-- contradiction detection (if sources conflict)
-- density validator (time/slide constraints)
+- verify that each bullet/claim is supported by at least one relevant evidence excerpt
+- verify that all evidence comes only from the user-provided resources (and selected scope, if chosen)
+- validate reading level constraints and slide density constraints
+- detect contradictions (if sources conflict) and ask the user how to handle them
 
-If fails → AI asks the user questions.
+If something is not clearly supported:
+- the AI does not invent or “fill the gap”
+- it asks the user a focused clarification question
 
 ---
 
@@ -336,7 +339,7 @@ Example:
 - Use only mentions (no definition)
 - Ask me to upload the definition page
 - Treat as prerequisite (no explanation)
-- Allow external knowledge (off by default)
+- Add your own sentence (teacher-provided wording)
 
 ---
 
@@ -345,15 +348,15 @@ Example:
 Reveal supports interactive HTML/JS slides → add teaching blocks:
 
 ### 9.1 Best interactive blocks for teachers
-1) **Quiz (MCQ)** with reveal-answer + explanation (grounded + cited)
+1) **Quiz (MCQ)** with reveal-answer + explanation (grounded + evidence-backed)
 2) **Flashcards** (front/back definitions)
 3) **Hotspots on image** (click area → tooltip explanation)
 4) **Drag & drop matching** (term ↔ definition, order steps)
 5) **Code block** (editable; runnable later)
 
 ### 9.2 Guardrails for interactivity
-- answers/explanations require citations
-- if quiz can’t be supported by sources → ask teacher
+- answers/explanations must be supported by evidence from the provided resources
+- if a quiz cannot be supported by the sources → ask the teacher
 
 ---
 
@@ -386,19 +389,19 @@ Electron/Tauri can be added later for:
 
 ### 11.2 AI MVP (Grounded v1)
 - upload resources + index
-- ask user constraints (level, duration, #slides, strict mode)
+- ask user constraints (level, duration, #slides)
 - generate outline/plan (approval step)
-- generate deck with citations
+- generate deck with evidence references
 - slide-level actions:
   - simplify
   - expand
   - regenerate from sources
   - (later) convert slide to quiz
 
-### 11.3 Trust layer MVP
-- citation hover UI (show snippet + location)
-- strict mode toggle (uncited content blocked)
-- uncertainty questions when needed
+### 11.3 Trust layer MVP (lightweight, default)
+- optional evidence hover UI (show snippet + location)
+- “ask when uncertain” cards
+- clear indicators when something is not found in the provided sources
 
 ---
 
@@ -410,8 +413,8 @@ Electron/Tauri can be added later for:
 - templates/themes
 
 ### Phase 2 — Grounded AI deck generation + plan-first
-- citations per bullet
-- strict mode
+- evidence-backed bullets by design
+- plan approval workflow
 - slide-level refinements
 
 ### Phase 3 — Agentic editing + quality checks
@@ -446,7 +449,7 @@ Electron/Tauri can be added later for:
   - retrieval index
   - planner
   - slide generator
-  - verifiers (citations, scope, level, density)
+  - verifiers (evidence coverage, scope, level, density)
 
 ### 13.2 Deck JSON is the moat
 - AI writes it
@@ -461,9 +464,9 @@ It’s the “intermediate representation” of presentations.
 ## 14. Quality Metrics (What “Good” Means)
 
 ### Trust
-- citation coverage (% bullets with citations)
-- scope violations (0 in strict mode)
-- uncertainty questions rate (expected early; decreases with UX improvements)
+- evidence coverage (% bullets supported by source excerpts)
+- uncertainty question rate (expected early; decreases with UX improvements)
+- “outside knowledge” incidents (target: zero)
 
 ### Pedagogy
 - reading level match
@@ -479,11 +482,11 @@ It’s the “intermediate representation” of presentations.
 
 ## 15. Differentiation & Moat
 
-1) **Grounded-by-design** (citations + strict mode + scope enforcement)
+1) **Grounded-by-design** (evidence-backed content, “ask when uncertain”)
 2) **Plan-first pedagogy** (teacher workflow)
 3) **Deck as code (JSON IR)** enabling agentic refactors
 4) **Reveal-native interactivity** (quizzes, hotspots, drag-drop)
-5) **Auditable output** (every claim traceable)
+5) **Auditable output** (every claim traceable to provided resources)
 
 ---
 
@@ -529,4 +532,4 @@ Create `src/styles/tokens.css`:
   --radius: 14px;
   --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
   --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.10);
-}# ProvaSlide
+}
